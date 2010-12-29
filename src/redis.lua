@@ -474,23 +474,17 @@ do
         return replies
     end
 
-    client_prototype.transaction = function(client, arg1, arg2)
-        local watch_keys, block
-        if not arg2 then
-            watch_keys, block = {}, arg1
-        elseif arg1 then --and arg2, implicitly
-            watch_keys, block = type(arg1)=="table" and arg1 or { arg1 }, arg2
-        else
-            error("Invalid parameters for redis transaction.")
-        end
-
-        if watch_keys.cas then
-            if watch_keys.cas == true then
-                watch_keys = { }
-            else
-                watch_keys = type(watch_keys.cas) == "table" and watch_keys.cas or { watch_keys.cas }
-            end
-        else
+    client_prototype.transaction = function(client, watch_keys, block, cas_flag)
+		assert(type(block)=='function', "Transaction block should be a function.")
+		
+		if type(watch_keys)=="string" then
+			watch_keys={watch_keys}
+		elseif type(watch_keys)~="table" then
+			error("watch_keys should be a string or a table.")
+		end
+		
+		if not cas_flag then
+			--prepend a multi, please.
             local tx_block = block
             block = function(client, ...)
                 client:multi()
